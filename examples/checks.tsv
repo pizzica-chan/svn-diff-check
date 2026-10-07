@@ -1,0 +1,3 @@
+staging_path	production_path	expected_path
+https://svn.example.com/repos/project/config/staging/app.xml	https://svn.example.com/repos/project/config/production/app.xml	expected/app.diff
+https://svn.example.com/repos/project/config/staging/db.xml	https://svn.example.com/repos/project/config/production/db.xml	expected/db.diff
