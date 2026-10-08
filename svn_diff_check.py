@@ -112,7 +112,9 @@ def get_svn_diff(check: Check, executable: str, revision: str | None,
     command = [executable, "diff", "--non-interactive", "--internal-diff", "--ignore-properties",
                "--extensions", ""]  # Override configured whitespace-ignore options.
     if revision:
-        if any("@" in url and url.rpartition("@")[2] for url in (check.staging, check.production)):
+        # SVN only interprets @revision after the final slash, not in user@host.
+        tails = (url.rsplit("/", 1)[-1] for url in (check.staging, check.production))
+        if any("@" in tail and tail.rpartition("@")[2] for tail in tails):
             raise CheckError("Do not combine --revision with URL @revision; choose one revision method")
         if ":" not in revision:
             revision = f"{revision}:{revision}"

@@ -166,6 +166,38 @@ class CliTests(unittest.TestCase):
         self.tsv.write_text("staging_path\tproduction_path\texpected_path\nhttps://example.test/stg@name@\thttps://example.test/prod@name@\texpected/app.diff\n", encoding="utf-8")
         self.assertEqual(self.run_cli(extra=["--revision", "123"])[0], 0)
 
+    def test_ssh_username_with_global_revision(self):
+        staging = "svn+ssh://alice@example.test/repos/stg/app.xml"
+        production = "svn+ssh://bob@example.test/repos/prod/app.xml"
+        self.tsv.write_text(
+            "staging_path\tproduction_path\texpected_path\n"
+            f"{staging}\t{production}\texpected/app.diff\n", encoding="utf-8",
+        )
+        code, _, err, run = self.run_cli(extra=["--revision", "123"])
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        run.assert_called_once()
+        command = run.call_args.args[0]
+        self.assertIn("--old=" + staging, command)
+        self.assertIn("--new=" + production, command)
+        self.assertEqual(command[command.index("--revision") + 1], "123:123")
+
+    def test_ssh_url_revision_conflicts_on_either_side(self):
+        urls = ["svn+ssh://alice@example.test/repos/stg/app.xml",
+                "svn+ssh://bob@example.test/repos/prod/app.xml"]
+        for side in (0, 1):
+            with self.subTest(side=side):
+                targets = urls.copy()
+                targets[side] += "@456"
+                self.tsv.write_text(
+                    "staging_path\tproduction_path\texpected_path\n"
+                    f"{targets[0]}\t{targets[1]}\texpected/app.diff\n", encoding="utf-8",
+                )
+                code, _, err, run = self.run_cli(extra=["--revision", "123"])
+                self.assertEqual(code, 2)
+                self.assertIn("Do not combine", err)
+                run.assert_not_called()
+
     def test_invalid_revision_encoding_and_missing_tsv(self):
         self.assertEqual(self.run_cli(extra=["--revision", "invalid"])[0], 2)
         self.assertEqual(self.run_cli(extra=["--encoding", "invalid-encoding"])[0], 2)
